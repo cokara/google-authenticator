@@ -15,8 +15,8 @@ module GoogleAuthenticatorRails
       def find
         cookie = controller.cookies[cookie_key]
         if cookie
-          token, user_id = parse_cookie(cookie).values_at(:token, :user_id)
-          conditions = { klass.google_lookup_token => token, :id => user_id }
+          token, identifier = parse_cookie(cookie).values_at(:token, primary_key)
+          conditions = { klass.google_lookup_token => token, primary_key => identifier }
           record = __send__(finder, conditions).first
           session = new(record)
           session.valid? ? session : nil
@@ -27,7 +27,7 @@ module GoogleAuthenticatorRails
 
       def create(user)
         raise GoogleAuthenticatorRails::Session::Persistence::TokenNotFound if user.nil? || !user.respond_to?(user.class.google_lookup_token) || user.google_token_value.blank?
-        controller.cookies[cookie_key] = create_cookie(user.google_token_value, user.id)
+        controller.cookies[cookie_key] = create_cookie(user.google_token_value, user.send(primary_key))
         new(user)
       end
 
@@ -52,13 +52,17 @@ module GoogleAuthenticatorRails
         @_klass ||= "#{self.to_s.sub("MfaSession", "")}".constantize
       end
 
-      def parse_cookie(cookie)
-        token, user_id = cookie.split('::')
-        { :token => token, :user_id => user_id }
+      def primary_key
+        @_primary_key ||= klass.primary_key.to_sym
       end
 
-      def create_cookie(token, user_id)
-        value = [token, user_id].join('::')
+      def parse_cookie(cookie)
+        token, id = cookie.split('::')
+        { :token => token, primary_key => id }
+      end
+
+      def create_cookie(token, identifier)
+        value = [token, identifier].join('::')
         options = GoogleAuthenticatorRails.cookie_options || {}
         options.merge(
           :value    => value,
