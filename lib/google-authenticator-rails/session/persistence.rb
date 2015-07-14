@@ -57,8 +57,8 @@ module GoogleAuthenticatorRails
       end
 
       def parse_cookie(cookie)
-        token, id = cookie.split('::')
-        { :token => token, primary_key => id }
+        token, identifier = cookie.split('::')
+        { :token => token, primary_key => identifier }
       end
 
       def create_cookie(token, identifier)
